@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { HouseHelp, DayOfWeek, Frequency, DAYS_OF_WEEK, CATEGORIES } from '@/lib/types';
-import { getHouseHelps, saveHouseHelp } from '@/lib/storage';
+import { fetchHouseHelps, saveHouseHelpApi } from '@/lib/storage';
 import { generateId } from '@/lib/utils';
 
 export default function HouseHelpFormPage() {
@@ -18,18 +18,22 @@ export default function HouseHelpFormPage() {
   const [workingDays, setWorkingDays] = useState<DayOfWeek[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
   const [frequency, setFrequency] = useState<Frequency>('once');
   const [rate, setRate] = useState('');
+  const [existingCreatedAt, setExistingCreatedAt] = useState<string>('');
 
   useEffect(() => {
     if (isEdit) {
-      const found = getHouseHelps().find((h) => h.id === editId);
-      if (found) {
-        setName(found.name);
-        setPhone(found.phone || '');
-        setCategory(found.category);
-        setWorkingDays(found.workingDays);
-        setFrequency(found.frequency);
-        setRate(found.rate ? String(found.rate) : '');
-      }
+      fetchHouseHelps().then((helps) => {
+        const found = helps.find((h) => h.id === editId);
+        if (found) {
+          setName(found.name);
+          setPhone(found.phone || '');
+          setCategory(found.category);
+          setWorkingDays(found.workingDays);
+          setFrequency(found.frequency);
+          setRate(found.rate ? String(found.rate) : '');
+          setExistingCreatedAt(found.createdAt);
+        }
+      });
     }
   }, [isEdit, editId]);
 
@@ -39,7 +43,7 @@ export default function HouseHelpFormPage() {
     );
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
 
@@ -52,11 +56,11 @@ export default function HouseHelpFormPage() {
       frequency,
       rate: rate ? Number(rate) : undefined,
       createdAt: isEdit
-        ? getHouseHelps().find((h) => h.id === editId)?.createdAt || new Date().toISOString()
+        ? existingCreatedAt || new Date().toISOString()
         : new Date().toISOString(),
     };
 
-    saveHouseHelp(help);
+    await saveHouseHelpApi(help);
     router.push('/house-help');
   }
 

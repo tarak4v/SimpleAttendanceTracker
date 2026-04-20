@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { HouseHelp, AttendanceRecord, AttendanceStatus, STATUS_LABELS, STATUS_COLORS } from '@/lib/types';
-import { getHouseHelps, getAllAttendanceForDateRange } from '@/lib/storage';
+import { fetchHouseHelps, fetchAttendanceForDateRange } from '@/lib/storage';
 import { todayStr, getDayOfWeek, getMonthDays, getMonthName, formatDate } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -16,12 +16,20 @@ export default function DashboardPage() {
   const monthDays = useMemo(() => getMonthDays(year, month), [year, month]);
   const todayDate = todayStr();
 
-  useEffect(() => {
-    setHelps(getHouseHelps());
-    const start = monthDays[0];
-    const end = monthDays[monthDays.length - 1];
-    setRecords(getAllAttendanceForDateRange(start, end));
+  const loadData = useCallback(async () => {
+    const [h, r] = await Promise.all([
+      fetchHouseHelps(),
+      fetchAttendanceForDateRange(monthDays[0], monthDays[monthDays.length - 1]),
+    ]);
+    setHelps(h);
+    setRecords(r);
   }, [monthDays]);
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener('focus', loadData);
+    return () => window.removeEventListener('focus', loadData);
+  }, [loadData]);
 
   // Build per-help stats for the current month
   const helpStats = useMemo(() => {

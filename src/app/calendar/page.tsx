@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { HouseHelp, AttendanceRecord, AttendanceStatus, STATUS_LABELS, STATUS_COLORS } from '@/lib/types';
-import { getHouseHelps, getAllAttendanceForDateRange, getAttendanceForDate, saveAttendance } from '@/lib/storage';
+import { fetchHouseHelps, fetchAttendanceForDateRange, saveAttendanceApi } from '@/lib/storage';
 import { formatDate, getMonthDays, getWeekDays, getMonthName, getDayOfWeek, todayStr, parseDate, generateId } from '@/lib/utils';
 
 type ViewMode = 'weekly' | 'monthly';
@@ -56,12 +56,15 @@ export default function CalendarPage() {
   const endDate = days[days.length - 1];
 
   useEffect(() => {
-    setHelps(getHouseHelps());
+    const reload = () => { fetchHouseHelps().then(setHelps); };
+    reload();
+    window.addEventListener('focus', reload);
+    return () => window.removeEventListener('focus', reload);
   }, []);
 
-  const loadRecords = useCallback(() => {
+  const loadRecords = useCallback(async () => {
     if (startDate && endDate) {
-      setRecords(getAllAttendanceForDateRange(startDate, endDate));
+      setRecords(await fetchAttendanceForDateRange(startDate, endDate));
     }
   }, [startDate, endDate]);
 
@@ -145,7 +148,7 @@ export default function CalendarPage() {
     return filteredHelps.filter((h) => h.workingDays.includes(dayOfWeek));
   }
 
-  function handleStatusChange(helpId: string, date: string, status: AttendanceStatus) {
+  async function handleStatusChange(helpId: string, date: string, status: AttendanceStatus) {
     const dayRecords = recordMap.get(date);
     const existing = dayRecords?.get(helpId);
     const record: AttendanceRecord = {
@@ -157,7 +160,7 @@ export default function CalendarPage() {
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    saveAttendance(record);
+    await saveAttendanceApi(record);
     loadRecords();
   }
 

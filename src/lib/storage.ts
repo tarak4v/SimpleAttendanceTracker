@@ -1,104 +1,77 @@
 import { HouseHelp, AttendanceRecord } from './types';
 
-const STORAGE_KEYS = {
-  houseHelps: 'hht_house_helps',
-  attendance: 'hht_attendance',
-  auth: 'hht_auth',
-} as const;
+// --- Auth (stays in localStorage — per browser session) ---
+const AUTH_KEY = 'hht_auth';
 
-function getItem<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function setItem<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-// House Help CRUD
-export function getHouseHelps(): HouseHelp[] {
-  return getItem<HouseHelp[]>(STORAGE_KEYS.houseHelps, []);
-}
-
-export function saveHouseHelp(help: HouseHelp): void {
-  const all = getHouseHelps();
-  const idx = all.findIndex((h) => h.id === help.id);
-  if (idx >= 0) {
-    all[idx] = help;
-  } else {
-    all.push(help);
-  }
-  setItem(STORAGE_KEYS.houseHelps, all);
-}
-
-export function deleteHouseHelp(id: string): void {
-  const all = getHouseHelps().filter((h) => h.id !== id);
-  setItem(STORAGE_KEYS.houseHelps, all);
-  // Also delete related attendance records
-  const records = getAttendanceRecords().filter((r) => r.houseHelpId !== id);
-  setItem(STORAGE_KEYS.attendance, records);
-}
-
-// Attendance CRUD
-export function getAttendanceRecords(): AttendanceRecord[] {
-  return getItem<AttendanceRecord[]>(STORAGE_KEYS.attendance, []);
-}
-
-export function getAttendanceForDate(date: string): AttendanceRecord[] {
-  return getAttendanceRecords().filter((r) => r.date === date);
-}
-
-export function getAttendanceForHouseHelp(houseHelpId: string): AttendanceRecord[] {
-  return getAttendanceRecords().filter((r) => r.houseHelpId === houseHelpId);
-}
-
-export function getAttendanceForHouseHelpAndDateRange(
-  houseHelpId: string,
-  startDate: string,
-  endDate: string
-): AttendanceRecord[] {
-  return getAttendanceRecords().filter(
-    (r) => r.houseHelpId === houseHelpId && r.date >= startDate && r.date <= endDate
-  );
-}
-
-export function getAllAttendanceForDateRange(
-  startDate: string,
-  endDate: string
-): AttendanceRecord[] {
-  return getAttendanceRecords().filter(
-    (r) => r.date >= startDate && r.date <= endDate
-  );
-}
-
-export function saveAttendance(record: AttendanceRecord): void {
-  const all = getAttendanceRecords();
-  const idx = all.findIndex(
-    (r) => r.houseHelpId === record.houseHelpId && r.date === record.date
-  );
-  if (idx >= 0) {
-    all[idx] = { ...record, updatedAt: new Date().toISOString() };
-  } else {
-    all.push(record);
-  }
-  setItem(STORAGE_KEYS.attendance, all);
-}
-
-// Auth
 export function isLoggedIn(): boolean {
-  return getItem<boolean>(STORAGE_KEYS.auth, false);
+  if (typeof window === 'undefined') return false;
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_KEY) || 'false');
+  } catch {
+    return false;
+  }
 }
 
 export function login(): void {
-  setItem(STORAGE_KEYS.auth, true);
+  if (typeof window !== 'undefined') localStorage.setItem(AUTH_KEY, 'true');
 }
 
 export function logout(): void {
-  setItem(STORAGE_KEYS.auth, false);
+  if (typeof window !== 'undefined') localStorage.setItem(AUTH_KEY, 'false');
 }
+
+// --- House Help (API → CSV) ---
+export async function fetchHouseHelps(): Promise<HouseHelp[]> {
+  const res = await fetch('/api/house-helps');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function saveHouseHelpApi(help: HouseHelp): Promise<void> {
+  await fetch('/api/house-helps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'save', data: help }),
+  });
+}
+
+export async function deleteHouseHelpApi(id: string): Promise<void> {
+  await fetch('/api/house-helps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', id }),
+  });
+}
+
+// --- Attendance (API → CSV) ---
+export async function fetchAttendanceForDate(date: string): Promise<AttendanceRecord[]> {
+  const res = await fetch(`/api/attendance?date=${date}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchAttendanceForDateRange(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+  const res = await fetch(`/api/attendance?startDate=${startDate}&endDate=${endDate}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function saveAttendanceApi(record: AttendanceRecord): Promise<void> {
+  await fetch('/api/attendance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+}
+
+// --- Sync wrappers (kept for backward compat — read from cache) ---
+// These are no longer used but kept so existing imports don't break during migration.
+export function getHouseHelps(): HouseHelp[] { return []; }
+export function saveHouseHelp(_h: HouseHelp): void {}
+export function deleteHouseHelp(_id: string): void {}
+export function getAttendanceRecords(): AttendanceRecord[] { return []; }
+export function getAttendanceForDate(_d: string): AttendanceRecord[] { return []; }
+export function getAttendanceForHouseHelp(_id: string): AttendanceRecord[] { return []; }
+export function getAttendanceForHouseHelpAndDateRange(_id: string, _s: string, _e: string): AttendanceRecord[] { return []; }
+export function getAllAttendanceForDateRange(_s: string, _e: string): AttendanceRecord[] { return []; }
+export function saveAttendance(_r: AttendanceRecord): void {}

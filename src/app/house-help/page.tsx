@@ -1,21 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { HouseHelp } from '@/lib/types';
-import { getHouseHelps, deleteHouseHelp } from '@/lib/storage';
+import { fetchHouseHelps, deleteHouseHelpApi } from '@/lib/storage';
 
 export default function HouseHelpListPage() {
   const [helps, setHelps] = useState<HouseHelp[]>([]);
+  const pathname = usePathname();
 
-  useEffect(() => {
-    setHelps(getHouseHelps());
+  const loadData = useCallback(async () => {
+    setHelps(await fetchHouseHelps());
   }, []);
 
-  function handleDelete(id: string, name: string) {
+  useEffect(() => {
+    loadData();
+    window.addEventListener('focus', loadData);
+    return () => window.removeEventListener('focus', loadData);
+  }, [loadData]);
+
+  // Reload when navigating back to this page
+  useEffect(() => {
+    loadData();
+  }, [pathname, loadData]);
+
+  async function handleDelete(id: string, name: string) {
     if (confirm(`Delete ${name}? This will also remove all attendance records.`)) {
-      deleteHouseHelp(id);
-      setHelps(getHouseHelps());
+      await deleteHouseHelpApi(id);
+      setHelps(await fetchHouseHelps());
     }
   }
 
