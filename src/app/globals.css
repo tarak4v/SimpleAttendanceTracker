@@ -1,26 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Status pill colors */
+.status-present { background-color: #10b981; color: white; }
+.status-absent { background-color: #ef4444; color: white; }
+.status-leave { background-color: #f59e0b; color: white; }
+.status-holiday { background-color: #3b82f6; color: white; }
+.status-halfday { background-color: #fb923c; color: white; }
+
+/* Calendar cell colors */
+.cal-present { background-color: #d1fae5; color: #065f46; }
+.cal-absent { background-color: #fee2e2; color: #991b1b; }
+.cal-leave { background-color: #fef3c7; color: #92400e; }
+.cal-holiday { background-color: #dbeafe; color: #1e40af; }
+.cal-halfday { background-color: #ffedd5; color: #9a3412; }
