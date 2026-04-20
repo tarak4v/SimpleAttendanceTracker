@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
 
-  let records = readAttendance();
+  let records = await readAttendance();
 
   if (date) {
     records = records.filter((r) => r.date === date);
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const record: AttendanceRecord = await request.json();
 
-  const all = readAttendance();
+  const all = await readAttendance();
   const idx = all.findIndex(
     (r) => r.houseHelpId === record.houseHelpId && r.date === record.date
   );
@@ -33,6 +33,6 @@ export async function POST(request: NextRequest) {
     all.push(record);
   }
 
-  writeAttendance(all);
+  await writeAttendance(all);
   return NextResponse.json({ ok: true });
 }

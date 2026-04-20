@@ -1,13 +1,18 @@
 import fs from 'fs';
 import path from 'path';
+import { put, list, del } from '@vercel/blob';
 import { HouseHelp, DayOfWeek, Frequency, AttendanceRecord, AttendanceStatus } from './types';
 
+const IS_VERCEL = !!process.env.VERCEL;
 const DATA_DIR = path.join(process.cwd(), 'data');
 const HOUSEHELP_FILE = path.join(DATA_DIR, 'househelps.csv');
 const ATTENDANCE_FILE = path.join(DATA_DIR, 'attendance.csv');
 
+const BLOB_HH_KEY = 'househelps.csv';
+const BLOB_ATT_KEY = 'attendance.csv';
+
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
+  if (!IS_VERCEL && !fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 }
@@ -81,19 +86,54 @@ function csvRowToHouseHelp(fields: string[]): HouseHelp {
   };
 }
 
-export function readHouseHelps(): HouseHelp[] {
-  ensureDataDir();
-  if (!fs.existsSync(HOUSEHELP_FILE)) return [];
-  const content = fs.readFileSync(HOUSEHELP_FILE, 'utf-8').trim();
+// --- Blob helpers ---
+async function readBlob(key: string): Promise<string> {
+  try {
+    const { blobs } = await list({ prefix: key });
+    if (blobs.length === 0) return '';
+    const res = await fetch(blobs[0].url);
+    return res.text();
+  } catch {
+    return '';
+  }
+}
+
+async function writeBlob(key: string, content: string): Promise<void> {
+  // Delete old blob first
+  try {
+    const { blobs } = await list({ prefix: key });
+    for (const b of blobs) {
+      await del(b.url);
+    }
+  } catch { /* ignore */ }
+  await put(key, content, { access: 'public', addRandomSuffix: false });
+}
+
+// --- House Help read/write ---
+export async function readHouseHelps(): Promise<HouseHelp[]> {
+  let content: string;
+  if (IS_VERCEL) {
+    content = (await readBlob(BLOB_HH_KEY)).trim();
+  } else {
+    ensureDataDir();
+    if (!fs.existsSync(HOUSEHELP_FILE)) return [];
+    content = fs.readFileSync(HOUSEHELP_FILE, 'utf-8').trim();
+  }
+  if (!content) return [];
   const lines = content.split('\n');
   if (lines.length <= 1) return [];
   return lines.slice(1).filter((l) => l.trim()).map((l) => csvRowToHouseHelp(csvParseLine(l)));
 }
 
-export function writeHouseHelps(helps: HouseHelp[]): void {
-  ensureDataDir();
+export async function writeHouseHelps(helps: HouseHelp[]): Promise<void> {
   const rows = [HH_HEADER, ...helps.map(houseHelpToCsvRow)];
-  fs.writeFileSync(HOUSEHELP_FILE, rows.join('\n') + '\n', 'utf-8');
+  const csv = rows.join('\n') + '\n';
+  if (IS_VERCEL) {
+    await writeBlob(BLOB_HH_KEY, csv);
+  } else {
+    ensureDataDir();
+    fs.writeFileSync(HOUSEHELP_FILE, csv, 'utf-8');
+  }
 }
 
 // --- Attendance CSV ---
@@ -123,17 +163,28 @@ function csvRowToAttendance(fields: string[]): AttendanceRecord {
   };
 }
 
-export function readAttendance(): AttendanceRecord[] {
-  ensureDataDir();
-  if (!fs.existsSync(ATTENDANCE_FILE)) return [];
-  const content = fs.readFileSync(ATTENDANCE_FILE, 'utf-8').trim();
+export async function readAttendance(): Promise<AttendanceRecord[]> {
+  let content: string;
+  if (IS_VERCEL) {
+    content = (await readBlob(BLOB_ATT_KEY)).trim();
+  } else {
+    ensureDataDir();
+    if (!fs.existsSync(ATTENDANCE_FILE)) return [];
+    content = fs.readFileSync(ATTENDANCE_FILE, 'utf-8').trim();
+  }
+  if (!content) return [];
   const lines = content.split('\n');
   if (lines.length <= 1) return [];
   return lines.slice(1).filter((l) => l.trim()).map((l) => csvRowToAttendance(csvParseLine(l)));
 }
 
-export function writeAttendance(records: AttendanceRecord[]): void {
-  ensureDataDir();
+export async function writeAttendance(records: AttendanceRecord[]): Promise<void> {
   const rows = [ATT_HEADER, ...records.map(attendanceToCsvRow)];
-  fs.writeFileSync(ATTENDANCE_FILE, rows.join('\n') + '\n', 'utf-8');
+  const csv = rows.join('\n') + '\n';
+  if (IS_VERCEL) {
+    await writeBlob(BLOB_ATT_KEY, csv);
+  } else {
+    ensureDataDir();
+    fs.writeFileSync(ATTENDANCE_FILE, csv, 'utf-8');
+  }
 }
