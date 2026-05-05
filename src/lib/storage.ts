@@ -20,7 +20,7 @@ export function logout(): void {
   if (typeof window !== 'undefined') localStorage.setItem(AUTH_KEY, 'false');
 }
 
-// --- House Help (API → CSV) ---
+// --- House Help (API -> Supabase) ---
 export async function fetchHouseHelps(): Promise<HouseHelp[]> {
   const res = await fetch('/api/house-helps');
   if (!res.ok) return [];
@@ -43,7 +43,7 @@ export async function deleteHouseHelpApi(id: string): Promise<void> {
   });
 }
 
-// --- Attendance (API → CSV) ---
+// --- Attendance (API -> Supabase) ---
 export async function fetchAttendanceForDate(date: string): Promise<AttendanceRecord[]> {
   const res = await fetch(`/api/attendance?date=${date}`);
   if (!res.ok) return [];
