@@ -63,15 +63,3 @@ export async function saveAttendanceApi(record: AttendanceRecord): Promise<void>
     body: JSON.stringify(record),
   });
 }
-
-// --- Sync wrappers (kept for backward compat — read from cache) ---
-// These are no longer used but kept so existing imports don't break during migration.
-export function getHouseHelps(): HouseHelp[] { return []; }
-export function saveHouseHelp(_h: HouseHelp): void {}
-export function deleteHouseHelp(_id: string): void {}
-export function getAttendanceRecords(): AttendanceRecord[] { return []; }
-export function getAttendanceForDate(_d: string): AttendanceRecord[] { return []; }
-export function getAttendanceForHouseHelp(_id: string): AttendanceRecord[] { return []; }
-export function getAttendanceForHouseHelpAndDateRange(_id: string, _s: string, _e: string): AttendanceRecord[] { return []; }
-export function getAllAttendanceForDateRange(_s: string, _e: string): AttendanceRecord[] { return []; }
-export function saveAttendance(_r: AttendanceRecord): void {}

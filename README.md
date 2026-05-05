@@ -26,6 +26,21 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 Note: keep `SUPABASE_SERVICE_ROLE_KEY` server-side only.
 
+### 3. Optional CSV Migration
+
+If you already have local CSV data in the `data/` folder, import it into Supabase with:
+
+```bash
+npm run migrate:csv-to-supabase
+```
+
+What it imports:
+- `data/househelps.csv`
+- `data/attendance.csv`
+- any monthly files like `data/attendance-2026-05.csv`
+
+The migration uses upserts, so rerunning it is safe.
+
 ## Run Locally
 
 Install dependencies:
