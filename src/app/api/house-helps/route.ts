@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readHouseHelps, writeHouseHelps } from '@/lib/csv';
+import { deleteAttendanceForHouseHelp, readHouseHelps, writeHouseHelps } from '@/lib/csv';
 import { HouseHelp } from '@/lib/types';
 
 export async function GET() {
@@ -26,9 +26,7 @@ export async function POST(request: NextRequest) {
   if (body.action === 'delete' && body.id) {
     const filtered = all.filter((h) => h.id !== body.id);
     await writeHouseHelps(filtered);
-    const { readAttendance, writeAttendance } = await import('@/lib/csv');
-    const records = (await readAttendance()).filter((r) => r.houseHelpId !== body.id);
-    await writeAttendance(records);
+    await deleteAttendanceForHouseHelp(body.id);
     return NextResponse.json({ ok: true });
   }
 
